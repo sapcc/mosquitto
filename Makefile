@@ -22,13 +22,13 @@ plugin: build.key build.key.pub
 container: build.key.pub
 	docker build -t $(IMAGE) .
 
-build.key:
-	openssl genrsa -out build.key 2048
-
 .PHONY: clean
 clean:
 	rm -f build.key build.key.pub
 	rm -rf $(CURDIR)/pkgs/*
+
+build.key:
+	openssl genrsa -out build.key 2048
 
 build.key.pub: build.key
 	openssl rsa -in build.key -pubout -out build.key.pub
