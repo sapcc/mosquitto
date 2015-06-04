@@ -1,22 +1,34 @@
+IMAGE=docker.***REMOVED***/monsoon/mosquitto 
+
 .PHONY: help
 help:
 	@echo
 	@echo "Available targets:"
-	@echo "  * pkg        - build the mosqitto packages"
-	@echo "  * container  - build production container"
+	@echo "  * mosquitto - build the mosqitto package"
+	@echo "  * plugin    - build the mosqitto auth plugin"
+	@echo "  * container - build production container"
+	@echo "  * clean     - remove build artifacts"
 
-.PHONY: pkg
-pkg: build.key
-	docker build -f Dockerfile.pkgbuild -t mosquitto-packagebuild .
-	rm -rf $(CURDIR)/pkgs/*
-	docker run -i -v $(CURDIR)/pkgs/:/home/build/packages/home/ mosquitto-packagebuild
+.PHONY: mosquitto
+mosquitto: build.key build.key.pub
+	docker build -f Dockerfile.pkgbuild -t mosquitto-build .
+	docker run --rm -i -v $(CURDIR)/pkgs/:/home/build/packages/home/ mosquitto-build
+
+plugin: build.key build.key.pub
+	docker build -f Dockerfile.pluginbuild -t mosquitto-build-plugin .
+	docker run --rm -i -v $(CURDIR)/pkgs/:/home/build/packages/home/ mosquitto-build-plugin
 
 .PHONY: container
 container: build.key.pub
-	docker build -t docker.***REMOVED***/monsoon/mosquitto .
+	docker build -t $(IMAGE) .
 
 build.key:
 	openssl genrsa -out build.key 2048
+
+.PHONY: clean
+clean:
+	rm -f build.key build.key.pub
+	rm -rf $(CURDIR)/pkgs/*
 
 build.key.pub: build.key
 	openssl rsa -in build.key -pubout -out build.key.pub

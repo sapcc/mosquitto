@@ -7,10 +7,10 @@ ENV http_proxy=http://proxy.***REMOVED***:8080 \
 RUN apk --update add alpine-sdk
 ADD build.key.pub /etc/apk/keys/
 ADD build.key /home/build/.abuild/build.key
-RUN apk --update add openssl-dev c-ares-dev util-linux-dev libwebsockets-dev
+RUN apk --update add mosquitto-dev
 ADD abuild.conf /etc/
 RUN adduser -D build && addgroup build abuild
 USER build
 WORKDIR /home/build
-ADD mosquitto/* /home/build/
+ADD mosquitto-auth-monsoon/ /home/build/
 CMD abuild -f

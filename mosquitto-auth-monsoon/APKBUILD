@@ -1,0 +1,44 @@
+# Contributor: Fabian Ruff <fabian.ruff@sap.com>
+# Maintainer:
+pkgname=mosquitto-auth-monsoon
+pkgver=1.0.0
+pkgrel=0
+pkgdesc="Monsoon authentication plugin for mosquitto"
+url="https://gitHub.***REMOVED***/monsoon/mosquitto"
+arch="all"
+license="MIT"
+depends=""
+depends_dev=""
+makedepends="$depends_dev mosquitto-dev"
+install=""
+subpackages=""
+source="mosquitto_auth_plugin_monsoon.c
+  Makefile"
+
+_builddir=
+prepare() {
+	local i
+	cd "$_builddir"
+	for i in $source; do
+		case $i in
+		*.patch) msg $i; patch -p1 -i "$srcdir"/$i || return 1;;
+		esac
+	done
+}
+
+build() {
+	cd "$_builddir"
+  make
+}
+
+package() {
+	cd "$_builddir"
+  install -Dm755 mosquitto_auth_plugin_monsoon.so "$pkgdir"/usr/lib/mosquitto_auth_plugin_monsoon.so
+}
+
+md5sums="873518e761f2fb6f5cc11a2540d7003a  mosquitto_auth_plugin_monsoon.c
+675c32bfd2e59003fa000b59f1d36e31  Makefile"
+sha256sums="4beb8ad62053e3f74557c4ed7ded325ae313b280c6820c55c5918567ce6b986c  mosquitto_auth_plugin_monsoon.c
+a6b72e4f60f064bb6368555c5d41ed53d070c01c9939a87ddc0ef22a65893194  Makefile"
+sha512sums="3c8a5706219554d3a5304dacf371137904cccb191916004ecdd9262cad9bbd9e6c6f9b236a8a8ac06e4785bca61f6d7357d9d5a0eee52a91fde00ecdbe522651  mosquitto_auth_plugin_monsoon.c
+8d60e3b5e2d33712408915fbd5085795162c843f6da4d8688084fe4ed4be9cc340f78c3cd8244993f194b1639432118bbc6b5425e6452ea6d437f2021e5adf87  Makefile"
