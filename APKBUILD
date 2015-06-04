@@ -1,0 +1,80 @@
+# Maintainer: Natanael Copa <ncopa@alpinelinux.org>
+pkgname=mosquitto
+pkgver=1.4.2
+pkgrel=1
+pkgdesc="An Open Source MQTT v3.1 Broker"
+url="http://mosquitto.org/"
+arch="all"
+license="BSD"
+depends=""
+depends_dev=""
+makedepends="$depends_dev openssl-dev c-ares-dev util-linux-dev
+	libwebsockets-dev"
+install="$pkgname.pre-install"
+subpackages="$pkgname-dev $pkgname-doc $pkgname-libs++:_pp
+	$pkgname-libs $pkgname-clients"
+replaces="mosquitto-utils"
+source="http://mosquitto.org/files/source/mosquitto-$pkgver.tar.gz
+	mosquitto.initd
+  0001-subject-as-username.patch"
+
+_builddir="$srcdir"/mosquitto-$pkgver
+prepare() {
+	local i
+	cd "$_builddir"
+	for i in $source; do
+		case $i in
+		*.patch) msg $i; patch -p1 -i "$srcdir"/$i || return 1;;
+		esac
+	done
+
+	sed -i "s|prefix=/usr/local|prefix=/usr|" config.mk
+	# dont strip
+	sed -i -e "s|(INSTALL) -s|(INSTALL)|g" \
+		-e 's|--strip-program=${CROSS_COMPILE}${STRIP}||' \
+		*/Makefile */*/Makefile
+}
+
+build() {
+	cd "$_builddir"
+	make \
+		WITH_MEMORY_TRACKING=no \
+		WITH_WEBSOCKETS=yes \
+		WITH_SRV=yes \
+		prefix=/usr || return 1
+}
+
+package() {
+	cd "$_builddir"
+	make prefix=/usr DESTDIR="$pkgdir" install || return 1
+	rm -f "$pkgdir"/usr/lib/*.la || return 1
+	mv "$pkgdir"/etc/mosquitto/mosquitto.conf.example \
+		"$pkgdir"/etc/mosquitto/mosquitto.conf || return 1
+	sed -i -e 's/#log_dest stderr/log_dest syslog/' \
+		"$pkgdir"/etc/mosquitto/mosquitto.conf || return 1
+	install -Dm755 "$srcdir"/mosquitto.initd "$pkgdir"/etc/init.d/mosquitto
+}
+
+_pp() {
+	pkgdesc="C++ wrapper for libmosquitto"
+	replaces=
+	mkdir -p "$subpkgdir"/usr/lib
+	mv "$pkgdir"/usr/lib/libmosquittopp.so.* "$subpkgdir"/usr/lib/
+}
+
+clients() {
+	pkgdesc="Mosquitto command line MQTT clients"
+	replaces="mosquitto-utils"
+	mkdir -p "$subpkgdir"/usr/bin
+	mv "$pkgdir"/usr/bin/mosquitto_[ps]ub "$subpkgdir"/usr/bin/
+}
+
+md5sums="2c3b19686c04849ed4b183c63149bfe1  mosquitto-1.4.2.tar.gz
+3a5c35f76efabcb7bd4fb6398caf9e5b  mosquitto.initd
+b02d6e67a9f34a02841242a586e41e1a  0001-subject-as-username.patch"
+sha256sums="5ebc3800a0018bfbec62dcc3748fb29f628df068acd39c62c4ef651d9276647e  mosquitto-1.4.2.tar.gz
+97c7324f0f5e9dce52b241366bcfc3fb02ef8d2e0d622bab898eb36f261056c9  mosquitto.initd
+ebf87569626c4549aebf654842d61877e8e5e04d47e8ee7de84de92218face38  0001-subject-as-username.patch"
+sha512sums="3fa443690f41672ec186e0c74f56b162f1bfb00c42bb95ff424af64a9451ab887b32c4e44db0325ee1d145a3777c33d20d4e672ba1b6e1dadc548aa58b9e4717  mosquitto-1.4.2.tar.gz
+16f96d8f7f3a8b06e2b2e04d42d7e0d89a931b52277fc017e4802f7a3bc85aff4dd290b1a0c40382ea8f5568d0ceb7319c031d9be916f346d805231a002b0433  mosquitto.initd
+3f766f07d35b94d0a37d07691c7561b519d26e0f3e47c65d2a51c625f226d6afa801058294ca3ed4a8f3903de37057aae2a1902a77113edfcb34a5b6e6a8568e  0001-subject-as-username.patch"

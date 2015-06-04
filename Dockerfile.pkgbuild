@@ -1,0 +1,16 @@
+FROM alpine
+
+ENV http_proxy http://proxy.***REMOVED***:8080
+ENV https_proxy http://proxy.***REMOVED***:8080
+ENV no_proxy hub.***REMOVED***,localhost,127.0.0.1
+
+RUN apk --update add alpine-sdk
+RUN apk --update add openssl-dev c-ares-dev util-linux-dev libwebsockets-dev
+ADD abuild.conf /etc/
+RUN adduser -D build && addgroup build abuild
+USER build
+WORKDIR /home/build
+ADD APKBUILD /home/build/
+ADD mosquitto* *.patch /home/build/
+ADD build.key /home/build/.abuild/build.key
+CMD abuild

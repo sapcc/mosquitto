@@ -1,0 +1,116 @@
+From b0e70c3271143d1469c263fb9f93b1d815cb911f Mon Sep 17 00:00:00 2001
+From: Fabian Ruff <fabian@progra.de>
+Date: Wed, 3 Jun 2015 11:15:58 +0200
+Subject: [PATCH] subject as username
+
+---
+ src/conf.c               | 10 ++++++++++
+ src/mosquitto_broker.h   |  1 +
+ src/read_handle_server.c | 29 ++++++++++++++++++++---------
+ 3 files changed, 31 insertions(+), 9 deletions(-)
+
+diff --git a/src/conf.c b/src/conf.c
+index b9fe3a4..230268e 100644
+--- a/src/conf.c
++++ b/src/conf.c
+@@ -194,6 +194,7 @@ void mqtt3_config_init(struct mqtt3_config *config)
+ 	config->default_listener.require_certificate = false;
+ 	config->default_listener.crlfile = NULL;
+ 	config->default_listener.use_identity_as_username = false;
++	config->default_listener.use_subject_as_username = false;
+ #endif
+ 	config->listeners = NULL;
+ 	config->listener_count = 0;
+@@ -385,6 +386,7 @@ int mqtt3_config_parse_args(struct mqtt3_config *config, int argc, char *argv[])
+ 			|| config->default_listener.require_certificate
+ 			|| config->default_listener.crlfile
+ 			|| config->default_listener.use_identity_as_username
++			|| config->default_listener.use_subject_as_username
+ #endif
+ 			|| config->default_listener.use_username_as_clientid
+ 			|| config->default_listener.host
+@@ -434,6 +436,7 @@ int mqtt3_config_parse_args(struct mqtt3_config *config, int argc, char *argv[])
+ 		config->listeners[config->listener_count-1].ssl_ctx = NULL;
+ 		config->listeners[config->listener_count-1].crlfile = config->default_listener.crlfile;
+ 		config->listeners[config->listener_count-1].use_identity_as_username = config->default_listener.use_identity_as_username;
++		config->listeners[config->listener_count-1].use_subject_as_username = config->default_listener.use_subject_as_username;
+ #endif
+ 	}
+ 
+@@ -1861,6 +1864,13 @@ int _config_read_file_core(struct mqtt3_config *config, bool reload, const char
+ #else
+ 					_mosquitto_log_printf(NULL, MOSQ_LOG_WARNING, "Warning: TLS support not available.");
+ #endif
++				}else if(!strcmp(token, "use_subject_as_username")){
++#ifdef WITH_TLS
++					if(reload) continue; // Listeners not valid for reloading.
++					if(_conf_parse_bool(&token, "use_subject_as_username", &cur_listener->use_subject_as_username, saveptr)) return MOSQ_ERR_INVAL;
++#else
++					_mosquitto_log_printf(NULL, MOSQ_LOG_WARNING, "Warning: TLS support not available.");
++#endif
+ 				}else if(!strcmp(token, "user")){
+ 					if(reload) continue; // Drop privileges user not valid for reloading.
+ 					if(_conf_parse_string(&token, "user", &config->user, saveptr)) return MOSQ_ERR_INVAL;
+diff --git a/src/mosquitto_broker.h b/src/mosquitto_broker.h
+index 9ed012d..a6046fe 100644
+--- a/src/mosquitto_broker.h
++++ b/src/mosquitto_broker.h
+@@ -71,6 +71,7 @@ struct _mqtt3_listener {
+ 	SSL_CTX *ssl_ctx;
+ 	char *crlfile;
+ 	bool use_identity_as_username;
++	bool use_subject_as_username;
+ 	char *tls_version;
+ #endif
+ #ifdef WITH_WEBSOCKETS
+diff --git a/src/read_handle_server.c b/src/read_handle_server.c
+index 7c370a4..7bd5b5c 100644
+--- a/src/read_handle_server.c
++++ b/src/read_handle_server.c
+@@ -312,7 +312,7 @@ int mqtt3_handle_connect(struct mosquitto_db *db, struct mosquitto *context)
+ 	}
+ 
+ #ifdef WITH_TLS
+-	if(context->listener && context->listener->ssl_ctx && context->listener->use_identity_as_username){
++	if(context->listener && context->listener->ssl_ctx && (context->listener->use_identity_as_username || context->listener->use_subject_as_username)){
+ 		if(!context->ssl){
+ 			_mosquitto_send_connack(context, 0, CONNACK_REFUSED_BAD_USERNAME_PASSWORD);
+ 			rc = 1;
+@@ -340,15 +340,26 @@ int mqtt3_handle_connect(struct mosquitto_db *db, struct mosquitto *context)
+ 				rc = 1;
+ 				goto handle_connect_error;
+ 			}
+-
+-			i = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
+-			if(i == -1){
+-				_mosquitto_send_connack(context, 0, CONNACK_REFUSED_BAD_USERNAME_PASSWORD);
+-				rc = 1;
+-				goto handle_connect_error;
++			if (context->listener->use_identity_as_username) { //use_identity_as_username
++				i = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
++				if(i == -1){
++					_mosquitto_send_connack(context, 0, CONNACK_REFUSED_BAD_USERNAME_PASSWORD);
++					rc = 1;
++					goto handle_connect_error;
++				}
++				name_entry = X509_NAME_get_entry(name, i);
++				context->username = _mosquitto_strdup((char *)ASN1_STRING_data(name_entry->value));
++			} else { // use_subject_as_username
++				BIO *subjectBio = BIO_new(BIO_s_mem()); 
++				X509_NAME_print_ex(subjectBio, X509_get_subject_name(client_cert) , 0, XN_FLAG_RFC2253);
++				char *dataStart = NULL;
++				long nameLength = BIO_get_mem_data(subjectBio, &dataStart);
++				char *subject = _mosquitto_malloc(sizeof(char)*nameLength);
++				memset(subject, 0x00, sizeof(char)*(nameLength + 1));
++				memcpy(subject, dataStart, nameLength);
++				BIO_free(subjectBio);
++				context->username = subject; 
+ 			}
+-			name_entry = X509_NAME_get_entry(name, i);
+-			context->username = _mosquitto_strdup((char *)ASN1_STRING_data(name_entry->value));
+ 			if(!context->username){
+ 				rc = 1;
+ 				goto handle_connect_error;
+-- 
+2.3.2 (Apple Git-55)
+
