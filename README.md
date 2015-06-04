@@ -9,7 +9,7 @@ Therefore we rebuild the alpine mosquitto packages using the standard alpine `ab
 
 
 
-Building the docker container is a two step process:
+Building the docker container is a multi-step process:
 
  1. Build the custom mosquitto apk packages for alpine linux (using a build container).
  2. Build the custom mosquitto auth plugin also packaged for alpine (using a build container).
