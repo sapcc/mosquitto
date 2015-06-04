@@ -7,7 +7,7 @@ ENV http_proxy=http://proxy.***REMOVED***:8080 \
 RUN apk --update add alpine-sdk
 ADD build.key.pub /etc/apk/keys/
 ADD build.key /home/build/.abuild/build.key
-RUN apk --update add mosquitto-dev
+RUN apk --update add mosquitto-dev openldap-dev
 ADD abuild.conf /etc/
 RUN adduser -D build && addgroup build abuild
 USER build
