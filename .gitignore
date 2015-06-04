@@ -1,2 +1,4 @@
 build.key*
 pkgs/
+*.o
+*.so
