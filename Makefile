@@ -13,8 +13,8 @@ help:
 
 .PHONY: image
 image: mosquitto plugin
-	docker build -t --rm $(IMAGE)
-	$(IMAGE) > image
+	docker build --rm -t $(IMAGE) .
+	echo $(IMAGE) > image
 
 .PHONY: mosquitto
 mosquitto: build.key build.key.pub
