@@ -19,11 +19,15 @@ image: mosquitto plugin
 .PHONY: mosquitto
 mosquitto: build.key build.key.pub
 	docker build -f Dockerfile.pkgbuild -t mosquitto-build .
-	docker run --rm -i -v $(CURDIR)/pkgs/:/home/build/packages/home/ mosquitto-build
+	mkdir -p $(CURDIR)/pkgs
+	chmod 777 $(CURDIR)/pkgs
+	docker run --rm -i -v $(CURDIR)/pkgs:/home/build/packages/home mosquitto-build
 
 plugin: build.key build.key.pub
 	docker build -f Dockerfile.pluginbuild -t mosquitto-build-plugin .
-	docker run --rm -i -v $(CURDIR)/pkgs/:/home/build/packages/home/ mosquitto-build-plugin
+	mkdir -p $(CURDIR)/pkgs
+	chmod 777 $(CURDIR)/pkgs
+	docker run --rm -i -v $(CURDIR)/pkgs:/home/build/packages/home mosquitto-build-plugin
 
 .PHONY: container
 container: build.key.pub
