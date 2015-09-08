@@ -1,4 +1,4 @@
-FROM alpine
+FROM alpine@3.2
 
 ENV http_proxy=http://proxy.***REMOVED***:8080 \
     https_proxy=http://proxy.***REMOVED***:8080 \
