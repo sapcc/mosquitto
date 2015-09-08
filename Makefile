@@ -1,4 +1,4 @@
-REPOSITORY  := docker.***REMOVED***/monsoon/arc-pki
+REPOSITORY  := docker.***REMOVED***/monsoon/mosquitto
 TAG         ?= latest
 IMAGE       := $(REPOSITORY):$(TAG)
 
