@@ -1,4 +1,6 @@
-IMAGE=docker.***REMOVED***/monsoon/mosquitto 
+REPOSITORY  := docker.***REMOVED***/monsoon/arc-pki
+TAG         ?= latest
+IMAGE       := $(REPOSITORY):$(TAG)
 
 .PHONY: help
 help:
@@ -8,6 +10,11 @@ help:
 	@echo "  * plugin    - build the mosqitto auth plugin"
 	@echo "  * container - build production container"
 	@echo "  * clean     - remove build artifacts"
+
+.PHONY: image
+image: mosquitto plugin
+	docker build -t --rm $(IMAGE)
+	$(IMAGE) > image
 
 .PHONY: mosquitto
 mosquitto: build.key build.key.pub
