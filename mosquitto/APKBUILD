@@ -16,7 +16,8 @@ subpackages="$pkgname-dev $pkgname-doc $pkgname-libs++:_pp
 replaces="mosquitto-utils"
 source="http://mosquitto.org/files/source/mosquitto-$pkgver.tar.gz
 	mosquitto.initd
-  0001-subject-as-username.patch"
+  0001-subject-as-username.patch
+  0002-log-rfc3339-timestamp.patch"
 
 _builddir="$srcdir"/mosquitto-$pkgver
 prepare() {
@@ -71,10 +72,13 @@ clients() {
 
 md5sums="1c1c750525546bc13d8d72e56a0742a7  mosquitto-1.4.3.tar.gz
 3a5c35f76efabcb7bd4fb6398caf9e5b  mosquitto.initd
-ef197246e697ba4675b91bd75ff167d4  0001-subject-as-username.patch"
+ef197246e697ba4675b91bd75ff167d4  0001-subject-as-username.patch
+4d5837af997eb41774f2dfc8609bd078  0002-log-rfc3339-timestamp.patch"
 sha256sums="773d7436f729b5a6088035708c9277a9c6ba5651e127b63c8f29fe39e152479c  mosquitto-1.4.3.tar.gz
 97c7324f0f5e9dce52b241366bcfc3fb02ef8d2e0d622bab898eb36f261056c9  mosquitto.initd
-305f59db9e3977efe828474a2b43a88d381372b01a991f9142250ab49a68fd71  0001-subject-as-username.patch"
+305f59db9e3977efe828474a2b43a88d381372b01a991f9142250ab49a68fd71  0001-subject-as-username.patch
+32c1e754fa33a31bf5bf4286ff4e5c6f70e76f824e2fae5ba558451c1baa53af  0002-log-rfc3339-timestamp.patch"
 sha512sums="c42cb61081ffc0f96dc76592539b47f687b881d08208a284f1438c7ebbd43f7e3298525258bfff390ac1770e746aad93002a3fd6d95b494ae37b16edfb93250c  mosquitto-1.4.3.tar.gz
 16f96d8f7f3a8b06e2b2e04d42d7e0d89a931b52277fc017e4802f7a3bc85aff4dd290b1a0c40382ea8f5568d0ceb7319c031d9be916f346d805231a002b0433  mosquitto.initd
-2f6839e49123a488942254b33f6259ac8b3dcc5816d76501ea7642c61623893bcac68c3034d8219b3209b82afc9f64a7a0a54bf2a52b25090407b540e0365f63  0001-subject-as-username.patch"
+2f6839e49123a488942254b33f6259ac8b3dcc5816d76501ea7642c61623893bcac68c3034d8219b3209b82afc9f64a7a0a54bf2a52b25090407b540e0365f63  0001-subject-as-username.patch
+8a50c6c843724ab2b36e2030301cea5a0fe1b42f1bba46eb56170102295352de053de640a4f4859e30ec38d1d6ada64cc9be84edb0b129f3b515c48b11f1ebe4  0002-log-rfc3339-timestamp.patch"
