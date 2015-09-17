@@ -10,25 +10,27 @@ int mosquitto_auth_plugin_version(void) {
 
 int mosquitto_auth_plugin_init(void **user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count) {
 	printf("FABUS: mosquitto_auth_plugin_init\n");
+  //mosquitto_log_printf(MOSQ_LOG_INFO, "mosquitto_auth_plugin_init\n");
   return MOSQ_ERR_SUCCESS;
 }
 
 int mosquitto_auth_plugin_cleanup(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count) {
-	printf( "FABUS: mosquitto_auth_plugin_cleanup\n");
+	//printf( "FABUS: mosquitto_auth_plugin_cleanup\n");
   return MOSQ_ERR_SUCCESS;
 }
 
 int mosquitto_auth_security_init(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count, bool reload) {
-	printf("FABUS: mosquitto_auth_security_init\n");
+	//printf("FABUS: mosquitto_auth_security_init\n");
   return MOSQ_ERR_SUCCESS;
 }
 
 int mosquitto_auth_security_cleanup(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count, bool reload){
-	printf("FABUS: mosquitto_auth_security_cleanup\n");
+	//printf("FABUS: mosquitto_auth_security_cleanup\n");
   return MOSQ_ERR_SUCCESS;
 }
 
 int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *username, const char *topic, int access) {
+  return MOSQ_ERR_SUCCESS;
   printf("FABUS: mosquitto_auth_acl_check(clientid: %s, username: %s, topic: %s, access: %d)\n", clientid, username, topic, access);
   LDAPDN dn = NULL;
   int err = ldap_str2dn(username, &dn , LDAP_DN_FORMAT_LDAPV3 | LDAP_DN_PEDANTIC);
@@ -72,7 +74,7 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
 }
 
 int mosquitto_auth_unpwd_check(void *user_data, const char *username, const char *password) {
-	printf("FABUS: mosquitto_auth_unpwd_check(username: %s, password: %s)\n", username, password);
+	//printf("FABUS: mosquitto_auth_unpwd_check(username: %s, password: %s)\n", username, password);
   return MOSQ_ERR_SUCCESS;
 }
 
