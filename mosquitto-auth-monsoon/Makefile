@@ -4,7 +4,7 @@ CFLAGS    = -Wall -Werror -fPIC
 ifdef MOSQUITTO_DIR
 INCLUDES = -I$(MOSQUITTO_DIR)/src -I$(MOSQUITTO_DIR)/lib
 endif
-LDFLAGS   = -lldap
+LDFLAGS   = -lldap -lmosquitto
 
 all: $(NAME).so
 
