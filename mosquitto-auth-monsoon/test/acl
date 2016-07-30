@@ -1,0 +1,4 @@
+pattern write clientid/%i
+pattern write common_name/%c
+pattern write organization/%o
+pattern write unit/%u

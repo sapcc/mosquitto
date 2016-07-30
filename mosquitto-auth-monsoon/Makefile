@@ -1,10 +1,11 @@
 NAME      = mosquitto_auth_plugin_monsoon
 
-CFLAGS    = -Wall -Werror -fPIC
+CFLAGS    = -Wall -Werror -Wno-deprecated-declarations -fPIC
+INCLUDES = -I/usr/local/include
 ifdef MOSQUITTO_DIR
 INCLUDES = -I$(MOSQUITTO_DIR)/src -I$(MOSQUITTO_DIR)/lib
 endif
-LDFLAGS   = -lldap -lmosquitto
+LDFLAGS  = -lldap -lmosquitto -L/usr/local/lib
 
 all: $(NAME).so
 
