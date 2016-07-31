@@ -24,6 +24,7 @@ struct _mosquitto_acl{
 struct _mosquitto_acl_user{
   struct _mosquitto_acl_user *next;
   char *username;
+  client_info *user_info;
   struct _mosquitto_acl *acl;
 };
 
@@ -67,6 +68,111 @@ int _parse_subject(const char *subject, client_info *info) {
   ldap_dnfree(dn);
   return 0;
 }
+
+int _add_acl(struct auth_db *db, const char *user, const char *topic, int access)
+{
+  printf("_add_acl user: %s, topic: %s\n", user, topic);
+  struct _mosquitto_acl_user *acl_user=NULL, *user_tail;
+  struct _mosquitto_acl *acl, *acl_tail;
+  char *local_topic;
+  bool new_user = false;
+
+  if(!db || !topic) return MOSQ_ERR_INVAL;
+
+  local_topic = strdup(topic);
+  if(!local_topic){
+    return MOSQ_ERR_NOMEM;
+  }
+
+  if(db->acl_list){
+    user_tail = db->acl_list;
+    while(user_tail){
+      if(user == NULL){
+        if(user_tail->username == NULL){
+          acl_user = user_tail;
+          break;
+        }
+      }else if(user_tail->username && !strcmp(user_tail->username, user)){
+        acl_user = user_tail;
+        break;
+      }
+      user_tail = user_tail->next;
+    }
+  }
+  if(!acl_user){
+    acl_user = malloc(sizeof(struct _mosquitto_acl_user));
+    if(!acl_user){
+      free(local_topic);
+      return MOSQ_ERR_NOMEM;
+    }
+    new_user = true;
+    if(user){
+      acl_user->username = strdup(user);
+      if(!acl_user->username){
+        free(local_topic);
+        free(acl_user);
+        return MOSQ_ERR_NOMEM;
+      }
+      acl_user->user_info = malloc(sizeof(client_info));
+      if (!acl_user->user_info) {
+        free(local_topic);
+        free(acl_user->username);
+        free(acl_user);
+        return MOSQ_ERR_NOMEM;
+      }
+      if (_parse_subject(user, acl_user->user_info) != 0) {
+        free(local_topic);
+        free(acl_user->user_info);
+        free(acl_user->username);
+        free(acl_user);
+        return MOSQ_ERR_INVAL;
+      }
+
+    }else{
+      acl_user->username = NULL;
+    }
+    acl_user->next = NULL;
+    acl_user->acl = NULL;
+  }
+
+  acl = malloc(sizeof(struct _mosquitto_acl));
+  if(!acl){
+    free(local_topic);
+    return MOSQ_ERR_NOMEM;
+  }
+  acl->access = access;
+  acl->topic = local_topic;
+  acl->next = NULL;
+  acl->ccount = 0;
+  acl->ucount = 0;
+
+  /* Add acl to user acl list */
+  if(acl_user->acl){
+    acl_tail = acl_user->acl;
+    while(acl_tail->next){
+      acl_tail = acl_tail->next;
+    }
+    acl_tail->next = acl;
+  }else{
+    acl_user->acl = acl;
+  }
+
+  if(new_user){
+    /* Add to end of list */
+    if(db->acl_list){
+      user_tail = db->acl_list;
+      while(user_tail->next){
+        user_tail = user_tail->next;
+      }
+      user_tail->next = acl_user;
+    }else{
+      db->acl_list = acl_user;
+    }
+  }
+
+  return MOSQ_ERR_SUCCESS;
+}
+
 
 int _add_acl_pattern(struct auth_db *db, const char *topic, int access)
 {
@@ -227,7 +333,7 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
           access = MOSQ_ACL_READ | MOSQ_ACL_WRITE;
         }
         if(topic_pattern == 0){
-          //rc = _add_acl(db, user, topic, access);
+          rc = _add_acl(db, user, topic, access);
         }else{
           rc = _add_acl_pattern(db, topic, access);
         }
@@ -339,6 +445,7 @@ int mosquitto_auth_plugin_cleanup(void *user_data, struct mosquitto_auth_opt *au
     if(db->acl_list->username){
       free(db->acl_list->username);
     }
+    _free_client_info(db->acl_list->user_info);
     free(db->acl_list);
     
     db->acl_list = user_tail;
@@ -370,6 +477,7 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
   struct auth_db *db = (struct auth_db *)user_data;
   char *local_acl;
   struct _mosquitto_acl *acl_root;
+  struct _mosquitto_acl_user *acl_user_root;
   bool result;
   int i;
   int len, tlen, ilen, clen, ulen, olen;
@@ -385,6 +493,55 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
   }
   printf("FABUS: CN=%s O=%s OU=%s\n", info->common_name, info->organization, info->organizational_unit);
 
+
+  acl_user_root = db->acl_list;
+  while(acl_user_root) {
+
+    printf("Checking acl for %s\n", acl_user_root->username);
+    //skip if no user_info available
+    if (!acl_user_root->user_info) {
+      printf("no user_info. skipping\n");
+      acl_user_root = acl_user_root->next;
+      continue;
+    }
+    if (acl_user_root->user_info->common_name && (!info->common_name || strcmp(acl_user_root->user_info->common_name, info->common_name  ))) {
+      printf("common_name does not match: %s\n", acl_user_root->user_info->common_name );
+      acl_user_root = acl_user_root->next;
+      continue;
+    }
+    if (acl_user_root->user_info->organizational_unit && (!info->organizational_unit || strcmp(acl_user_root->user_info->organizational_unit, info->organizational_unit ))) {
+      printf("unit does not match: %s\n", acl_user_root->user_info->organizational_unit );
+      acl_user_root = acl_user_root->next;
+      continue;
+    }
+    if (acl_user_root->user_info->organization && (!info->organization || strcmp(acl_user_root->user_info->organization, info->organization ))) {
+      printf("organization does not match: %s\n", acl_user_root->user_info->organization );
+      acl_user_root = acl_user_root->next;
+      continue;
+    }
+
+    acl_root = acl_user_root->acl;
+    /* Loop through all ACLs for the user. */
+    while(acl_root){
+      /* Loop through the topic looking for matches to this ACL. */
+
+      /* If subscription starts with $, acl_root->topic must also start with $. */
+      if(topic[0] == '$' && acl_root->topic[0] != '$'){
+        acl_root = acl_root->next;
+        continue;
+      }
+      mosquitto_topic_matches_sub(acl_root->topic, topic, &result);
+      if(result){
+        if(access & acl_root->access){
+          printf("Matchibus!!!!!\n");
+          /* And access is allowed. */
+          return MOSQ_ERR_SUCCESS;
+        }
+      }
+      acl_root = acl_root->next;
+    }
+    acl_user_root = acl_user_root->next;
+  }
 
   acl_root = db->acl_patterns;
   /* Loop through all pattern ACLs. */

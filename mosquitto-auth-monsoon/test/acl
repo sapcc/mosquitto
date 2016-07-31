@@ -1,3 +1,7 @@
+user CN=client2,OU=project3
+topic test 
+user OU=project2
+topic # 
 pattern write clientid/%i
 pattern write common_name/%c
 pattern write organization/%o
