@@ -21,10 +21,19 @@ struct _mosquitto_acl{
   int ocount; // organization
 };
 
+struct _mosquitto_acl_user{
+  struct _mosquitto_acl_user *next;
+  char *username;
+  struct _mosquitto_acl *acl;
+};
+
 struct auth_db{
+  struct _mosquitto_acl_user *acl_list;
   struct _mosquitto_acl *acl_patterns;
   char * acl_file;
 };
+
+
 
 int _parse_subject(const char *subject, client_info *info) {
   LDAPDN dn = NULL;
@@ -144,11 +153,13 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
   FILE *aclfile;
   char buf[1024];
   char *token;
+  char *user = NULL;
   char *topic;
   char *access_s;
   int access;
   int rc;
   int slen;
+  int topic_pattern;
   char *saveptr = NULL;
 
   aclfile = fopen(filepath, "rt");
@@ -158,7 +169,9 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
     return 1;
   }
 
-  // pattern [read|write] <topic> 
+  // topic [read|write] <topic> 
+  // user <user>
+
   while(fgets(buf, 1024, aclfile)){
     slen = strlen(buf);
     while(slen > 0 && (buf[slen-1] == 10 || buf[slen-1] == 13)){
@@ -170,12 +183,18 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
     }
     token = strtok_r(buf, " ", &saveptr);
     if(token){
-      if(!strcmp(token, "pattern")){
+      if(!strcmp(token, "topic") || !strcmp(token, "pattern")){
+        if(!strcmp(token, "topic")){
+          topic_pattern = 0;
+        }else{
+          topic_pattern = 1;
+        }
 
         access_s = strtok_r(NULL, " ", &saveptr);
         if(!access_s){
           //mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Empty topic in acl_file.");
           printf("Error: Empty topic in acl_file.\n");
+          if(user) free(user);
           fclose(aclfile);
           return MOSQ_ERR_INVAL;
         }
@@ -200,21 +219,48 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
           }else{
             //mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Invalid topic access type \"%s\" in acl_file.", access_s);
             printf("Error: Invalid topic access type \"%s\" in acl_file.\n", access_s);
+            if(user) free(user);
             fclose(aclfile);
             return MOSQ_ERR_INVAL;
           }
         }else{
           access = MOSQ_ACL_READ | MOSQ_ACL_WRITE;
         }
-        rc = _add_acl_pattern(db, topic, access);
+        if(topic_pattern == 0){
+          //rc = _add_acl(db, user, topic, access);
+        }else{
+          rc = _add_acl_pattern(db, topic, access);
+        }
         if(rc){
+          if(user) free(user);
           fclose(aclfile);
           return rc;
+        }
+      }else if(!strcmp(token, "user")){
+        token = strtok_r(NULL, "", &saveptr);
+        if(token){
+          /* Ignore duplicate spaces */
+          while(token[0] == ' '){
+            token++;
+          }
+          if(user) free(user);
+          user = strdup(token);
+          if(!user){
+            fclose(aclfile);
+            return MOSQ_ERR_NOMEM;
+          }
+        }else{
+          //mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Missing username in acl_file.");
+          printf("Error: Missing username in acl_file.\n");
+          if(user) free(user);
+          fclose(aclfile);
+          return 1;
         }
       }
     }
   }
 
+  if(user) free(user);
   fclose(aclfile);
 
   return MOSQ_ERR_SUCCESS;
@@ -267,6 +313,7 @@ int mosquitto_auth_plugin_init(void **user_data, struct mosquitto_auth_opt *auth
   memset(*user_data, 0, sizeof(struct auth_db));
   db = *user_data;
   db->acl_patterns = NULL;
+  db->acl_list = NULL;
   db->acl_file = NULL;
 
   for (i = 0, o = auth_opts; i < auth_opt_count; i++, o++) {
@@ -283,6 +330,19 @@ int mosquitto_auth_plugin_init(void **user_data, struct mosquitto_auth_opt *auth
 int mosquitto_auth_plugin_cleanup(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count) {
   //printf( "FABUS: mosquitto_auth_plugin_cleanup\n");
   struct auth_db *db = (struct auth_db *)user_data;
+  struct _mosquitto_acl_user *user_tail;
+
+  while(db->acl_list){
+    user_tail = db->acl_list->next;
+
+    _free_acl(db->acl_list->acl);
+    if(db->acl_list->username){
+      free(db->acl_list->username);
+    }
+    free(db->acl_list);
+    
+    db->acl_list = user_tail;
+  }
 
   if(db->acl_patterns){
     _free_acl(db->acl_patterns);
@@ -318,7 +378,7 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
   client_info *info = malloc(sizeof(client_info));
 
   if(!db || !topic) return MOSQ_ERR_INVAL;
-  if(!db->acl_patterns) return MOSQ_ERR_SUCCESS;
+  if(!db->acl_list && !db->acl_patterns) return MOSQ_ERR_SUCCESS;
 
   if (_parse_subject(username, info) != 0) {
     return MOSQ_ERR_ACL_DENIED;
