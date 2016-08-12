@@ -28,19 +28,46 @@ struct _mosquitto_acl_user{
   struct _mosquitto_acl *acl;
 };
 
-struct auth_db{
+typedef struct {
   struct _mosquitto_acl_user *acl_list;
   struct _mosquitto_acl *acl_patterns;
   char * acl_file;
-};
+} auth_db;
 
+static void _free_acl(struct _mosquitto_acl *acl)
+{
+  if(!acl) return;
 
+  if(acl->next){
+    _free_acl(acl->next);
+  }
+  if(acl->topic){
+    free(acl->topic);
+  }
+  free(acl);
+}
+
+static void _free_client_info(client_info *info)
+{
+  if(!info) return;
+
+  if(info->common_name){
+    free(info->common_name);
+  }
+  if(info->organization){
+    free(info->organization);
+  }
+  if(info->organizational_unit){
+    free(info->organizational_unit);
+  }
+  free(info);
+}
 
 int _parse_subject(const char *subject, client_info *info) {
   LDAPDN dn = NULL;
   int err = ldap_str2dn(subject, &dn , LDAP_DN_FORMAT_LDAPV3 | LDAP_DN_PEDANTIC);
   if (err != 0) {
-    printf("FABUS: error parsing dn: %d)\n", err);
+    mosquitto_log_printf(MOSQ_LOG_ERR, "Failed to parse certificate subject \"%s\": %s", subject, ldap_err2string(err));
     ldap_dnfree(dn);
     return -1; 
   }
@@ -69,9 +96,9 @@ int _parse_subject(const char *subject, client_info *info) {
   return 0;
 }
 
-int _add_acl(struct auth_db *db, const char *user, const char *topic, int access)
+int _add_acl(auth_db *db, const char *user, const char *topic, int access)
 {
-  printf("_add_acl user: %s, topic: %s\n", user, topic);
+  mosquitto_log_printf(MOSQ_LOG_DEBUG, "Add acl for %s; topic: %s", user, topic);
   struct _mosquitto_acl_user *acl_user=NULL, *user_tail;
   struct _mosquitto_acl *acl, *acl_tail;
   char *local_topic;
@@ -122,7 +149,7 @@ int _add_acl(struct auth_db *db, const char *user, const char *topic, int access
       }
       if (_parse_subject(user, acl_user->user_info) != 0) {
         free(local_topic);
-        free(acl_user->user_info);
+        _free_client_info(acl_user->user_info);
         free(acl_user->username);
         free(acl_user);
         return MOSQ_ERR_INVAL;
@@ -174,7 +201,7 @@ int _add_acl(struct auth_db *db, const char *user, const char *topic, int access
 }
 
 
-int _add_acl_pattern(struct auth_db *db, const char *topic, int access)
+int _add_acl_pattern(auth_db *db, const char *topic, int access)
 {
   struct _mosquitto_acl *acl, *acl_tail;
   char *local_topic;
@@ -254,7 +281,7 @@ int _add_acl_pattern(struct auth_db *db, const char *topic, int access)
 }
 
 
-static int _aclfile_parse(struct auth_db *db, const char *filepath)
+static int _aclfile_parse(auth_db *db, const char *filepath)
 {
   FILE *aclfile;
   char buf[1024];
@@ -270,8 +297,7 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
 
   aclfile = fopen(filepath, "rt");
   if(!aclfile){
-    //mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Unable to open acl_file \"%s\".", filepath);
-    printf("Error: Unable to open acl_file \"%s\".", filepath);
+    mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Unable to open acl_file \"%s\".", filepath);
     return 1;
   }
 
@@ -298,8 +324,7 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
 
         access_s = strtok_r(NULL, " ", &saveptr);
         if(!access_s){
-          //mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Empty topic in acl_file.");
-          printf("Error: Empty topic in acl_file.\n");
+          mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Empty topic in acl_file.");
           if(user) free(user);
           fclose(aclfile);
           return MOSQ_ERR_INVAL;
@@ -323,8 +348,7 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
           }else if(!strcmp(access_s, "readwrite")){
             access = MOSQ_ACL_READ | MOSQ_ACL_WRITE;
           }else{
-            //mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Invalid topic access type \"%s\" in acl_file.", access_s);
-            printf("Error: Invalid topic access type \"%s\" in acl_file.\n", access_s);
+            mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Invalid topic access type \"%s\" in acl_file.", access_s);
             if(user) free(user);
             fclose(aclfile);
             return MOSQ_ERR_INVAL;
@@ -372,35 +396,6 @@ static int _aclfile_parse(struct auth_db *db, const char *filepath)
   return MOSQ_ERR_SUCCESS;
 }
 
-static void _free_acl(struct _mosquitto_acl *acl)
-{
-  if(!acl) return;
-
-  if(acl->next){
-    _free_acl(acl->next);
-  }
-  if(acl->topic){
-    free(acl->topic);
-  }
-  free(acl);
-}
-
-static void _free_client_info(client_info *info)
-{
-  if(!info) return;
-
-  if(info->common_name){
-    free(info->common_name);
-  }
-  if(info->organization){
-    free(info->organization);
-  }
-  if(info->organizational_unit){
-    free(info->organizational_unit);
-  }
-  free(info);
-}
-
 int mosquitto_auth_plugin_version(void) {
   return MOSQ_AUTH_PLUGIN_VERSION;
 }
@@ -408,15 +403,14 @@ int mosquitto_auth_plugin_version(void) {
 int mosquitto_auth_plugin_init(void **user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count) {
   int i;
   struct mosquitto_auth_opt *o;
-  printf("FABUS: mosquitto_auth_plugin_init\n");
-  struct auth_db *db;
-  *user_data = (struct auth_db *)malloc(sizeof(struct auth_db));
+  mosquitto_log_printf(MOSQ_LOG_INFO, "mosquitto_auth_plugin_init");
+  auth_db *db;
+  *user_data = (auth_db *)malloc(sizeof(auth_db));
 
   if (*user_data == NULL) {
-    printf("error allocting user_data\n");
+    mosquitto_log_printf(MOSQ_LOG_ERR, "error allocting user_data");
     return MOSQ_ERR_UNKNOWN;
   }
-  memset(*user_data, 0, sizeof(struct auth_db));
   db = *user_data;
   db->acl_patterns = NULL;
   db->acl_list = NULL;
@@ -426,7 +420,7 @@ int mosquitto_auth_plugin_init(void **user_data, struct mosquitto_auth_opt *auth
     if (!strcmp(o->key, "acl_file")) db->acl_file = strdup(o->value);
   }
   if (db->acl_file == NULL) {
-    printf("acl_file option missing\n");
+    mosquitto_log_printf(MOSQ_LOG_ERR, "acl_file option missing");
     return MOSQ_ERR_UNKNOWN;
   }
 
@@ -434,8 +428,7 @@ int mosquitto_auth_plugin_init(void **user_data, struct mosquitto_auth_opt *auth
 }
 
 int mosquitto_auth_plugin_cleanup(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count) {
-  //printf( "FABUS: mosquitto_auth_plugin_cleanup\n");
-  struct auth_db *db = (struct auth_db *)user_data;
+  auth_db *db = (auth_db *)user_data;
   struct _mosquitto_acl_user *user_tail;
 
   while(db->acl_list){
@@ -460,21 +453,16 @@ int mosquitto_auth_plugin_cleanup(void *user_data, struct mosquitto_auth_opt *au
 }
 
 int mosquitto_auth_security_init(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count, bool reload) {
-
-
-  //printf("FABUS: mosquitto_auth_security_init\n");
   return MOSQ_ERR_SUCCESS;
 }
 
-int mosquitto_auth_security_cleanup(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count, bool reload){
-
-  //printf("FABUS: mosquitto_auth_security_cleanup\n");
+int mosquitto_auth_security_cleanup(void *user_data, struct mosquitto_auth_opt *auth_opts, int auth_opt_count, bool reload) {
   return MOSQ_ERR_SUCCESS;
 }
 
 int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *username, const char *topic, int access) {
-  printf("FABUS: mosquitto_auth_acl_check(clientid: %s, username: %s, topic: %s, access: %d)\n", clientid, username, topic, access);
-  struct auth_db *db = (struct auth_db *)user_data;
+  mosquitto_log_printf(MOSQ_LOG_DEBUG, "mosquitto_auth_acl_check(clientid: %s, username: %s, topic: %s, access: %d)", clientid, username, topic, access);
+  auth_db *db = (auth_db *)user_data;
   char *local_acl;
   struct _mosquitto_acl *acl_root;
   struct _mosquitto_acl_user *acl_user_root;
@@ -483,39 +471,43 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
   int len, tlen, ilen, clen, ulen, olen;
   char *s;
 
-  client_info *info = malloc(sizeof(client_info));
-
   if(!db || !topic) return MOSQ_ERR_INVAL;
   if(!db->acl_list && !db->acl_patterns) return MOSQ_ERR_SUCCESS;
 
-  if (_parse_subject(username, info) != 0) {
+  client_info *info = malloc(sizeof(client_info));
+  if (!info) {
+    mosquitto_log_printf(MOSQ_LOG_ERR, "Failed to allocate memory for client_info");
     return MOSQ_ERR_ACL_DENIED;
   }
-  printf("FABUS: CN=%s O=%s OU=%s\n", info->common_name, info->organization, info->organizational_unit);
 
+  if (_parse_subject(username, info) != 0) {
+    _free_client_info(info);
+    return MOSQ_ERR_ACL_DENIED;
+  }
+  mosquitto_log_printf(MOSQ_LOG_DEBUG, "Extracted from username: CN=%s O=%s OU=%s", info->common_name, info->organization, info->organizational_unit);
 
   acl_user_root = db->acl_list;
   while(acl_user_root) {
 
-    printf("Checking acl for %s\n", acl_user_root->username);
+    mosquitto_log_printf(MOSQ_LOG_DEBUG, "Checking acl for %s", acl_user_root->username);
     //skip if no user_info available
     if (!acl_user_root->user_info) {
-      printf("no user_info. skipping\n");
+      mosquitto_log_printf(MOSQ_LOG_DEBUG, "No user_info. Skipping");
       acl_user_root = acl_user_root->next;
       continue;
     }
     if (acl_user_root->user_info->common_name && (!info->common_name || strcmp(acl_user_root->user_info->common_name, info->common_name  ))) {
-      printf("common_name does not match: %s\n", acl_user_root->user_info->common_name );
+      mosquitto_log_printf(MOSQ_LOG_DEBUG, "common_name does not match: %s", acl_user_root->user_info->common_name );
       acl_user_root = acl_user_root->next;
       continue;
     }
     if (acl_user_root->user_info->organizational_unit && (!info->organizational_unit || strcmp(acl_user_root->user_info->organizational_unit, info->organizational_unit ))) {
-      printf("unit does not match: %s\n", acl_user_root->user_info->organizational_unit );
+      mosquitto_log_printf(MOSQ_LOG_DEBUG, "unit does not match: %s", acl_user_root->user_info->organizational_unit );
       acl_user_root = acl_user_root->next;
       continue;
     }
     if (acl_user_root->user_info->organization && (!info->organization || strcmp(acl_user_root->user_info->organization, info->organization ))) {
-      printf("organization does not match: %s\n", acl_user_root->user_info->organization );
+      mosquitto_log_printf(MOSQ_LOG_DEBUG, "organization does not match: %s", acl_user_root->user_info->organization );
       acl_user_root = acl_user_root->next;
       continue;
     }
@@ -533,7 +525,8 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
       mosquitto_topic_matches_sub(acl_root->topic, topic, &result);
       if(result){
         if(access & acl_root->access){
-          printf("Matchibus!!!!!\n");
+          mosquitto_log_printf(MOSQ_LOG_DEBUG, "Topic %s matches %s. Access granted", topic, acl_root->topic);
+          _free_client_info(info);
           /* And access is allowed. */
           return MOSQ_ERR_SUCCESS;
         }
@@ -576,7 +569,11 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
     }
     
     local_acl = malloc(len+1);
-    if(!local_acl) return 1; // FIXME
+    if(!local_acl) {
+      mosquitto_log_printf(MOSQ_LOG_ERR, "Failed to allocate memory for local_acl");
+      _free_client_info(info);
+      return MOSQ_ERR_ACL_DENIED;
+    }
     s = local_acl;
     for(i=0; i<tlen; i++){
       if(i<tlen-1 && acl_root->topic[i] == '%'){
@@ -609,24 +606,22 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
 
     mosquitto_topic_matches_sub(local_acl, topic, &result);
     free(local_acl);
+    _free_client_info(info);
     if(result){
       if(access & acl_root->access){
         /* And access is allowed. */
-        printf("acl allowed\n");
-        _free_client_info(info);
+        mosquitto_log_printf(MOSQ_LOG_DEBUG, "Topic %s matched by %s. Access granted.", topic, local_acl);
         return MOSQ_ERR_SUCCESS;
       }
     }
 
     acl_root = acl_root->next;
   }
-  printf("acl denied\n");
-  _free_client_info(info);
+  mosquitto_log_printf(MOSQ_LOG_DEBUG, "Access denied");
   return MOSQ_ERR_ACL_DENIED;
 }
 
 int mosquitto_auth_unpwd_check(void *user_data, const char *username, const char *password) {
-  //printf("FABUS: mosquitto_auth_unpwd_check(username: %s, password: %s)\n", username, password);
   return MOSQ_ERR_SUCCESS;
 }
 
