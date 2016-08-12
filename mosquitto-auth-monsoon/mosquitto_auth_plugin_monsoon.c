@@ -63,6 +63,26 @@ static void _free_client_info(client_info *info)
   free(info);
 }
 
+static client_info *_malloc_client_info() {
+  client_info *i = malloc(sizeof(client_info));
+  if (!i) return NULL;
+  memset(i, 0, sizeof(client_info)); 
+  i->common_name = NULL;
+  i->organization = NULL;
+  i->organizational_unit = NULL;
+  return i;
+}
+
+static auth_db *_malloc_auth_db() {
+  auth_db *d = malloc(sizeof(auth_db));
+  if (!d) return NULL;
+  memset(d, 0, sizeof(auth_db));
+  d->acl_patterns = NULL;
+  d->acl_list = NULL;
+  d->acl_file = NULL;
+  return d;
+}
+
 int _parse_subject(const char *subject, client_info *info) {
   LDAPDN dn = NULL;
   int err = ldap_str2dn(subject, &dn , LDAP_DN_FORMAT_LDAPV3 | LDAP_DN_PEDANTIC);
@@ -140,7 +160,7 @@ int _add_acl(auth_db *db, const char *user, const char *topic, int access)
         free(acl_user);
         return MOSQ_ERR_NOMEM;
       }
-      acl_user->user_info = malloc(sizeof(client_info));
+      acl_user->user_info = _malloc_client_info();
       if (!acl_user->user_info) {
         free(local_topic);
         free(acl_user->username);
@@ -405,7 +425,7 @@ int mosquitto_auth_plugin_init(void **user_data, struct mosquitto_auth_opt *auth
   struct mosquitto_auth_opt *o;
   mosquitto_log_printf(MOSQ_LOG_INFO, "mosquitto_auth_plugin_init");
   auth_db *db;
-  *user_data = (auth_db *)malloc(sizeof(auth_db));
+  *user_data = _malloc_auth_db();
 
   if (*user_data == NULL) {
     mosquitto_log_printf(MOSQ_LOG_ERR, "error allocting user_data");
@@ -474,7 +494,7 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
   if(!db || !topic) return MOSQ_ERR_INVAL;
   if(!db->acl_list && !db->acl_patterns) return MOSQ_ERR_SUCCESS;
 
-  client_info *info = malloc(sizeof(client_info));
+  client_info *info = _malloc_client_info();
   if (!info) {
     mosquitto_log_printf(MOSQ_LOG_ERR, "Failed to allocate memory for client_info");
     return MOSQ_ERR_ACL_DENIED;

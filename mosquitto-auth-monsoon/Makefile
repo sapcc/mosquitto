@@ -24,4 +24,4 @@ test: test_runner
 	./test_runner
 
 clean:
-	rm -f *.so
+	rm -f *.so test_runner
