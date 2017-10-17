@@ -629,16 +629,15 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
     local_acl[len] = '\0';
 
     mosquitto_topic_matches_sub(local_acl, topic, &result);
+    free(local_acl);
     _free_client_info(info);
     if(result){
       if(access & acl_root->access){
         /* And access is allowed. */
-        mosquitto_log_printf(MOSQ_LOG_DEBUG, "Topic %s matched by %s. Access granted.", topic, local_acl);
-        free(local_acl);
+        mosquitto_log_printf(MOSQ_LOG_DEBUG, "Topic %s matched by %s. Access granted.", topic, acl_root->topic);
         return MOSQ_ERR_SUCCESS;
       }
     }
-    free(local_acl);
 
     acl_root = acl_root->next;
   }
