@@ -565,6 +565,7 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
   ilen = strlen(clientid);
   while(acl_root){
     tlen = strlen(acl_root->topic);
+    //mosquitto_log_printf(MOSQ_LOG_DEBUG, "processing pattern %s", acl_root->topic);
 
     if(acl_root->ucount && !info->common_name){
       acl_root = acl_root->next;
@@ -630,11 +631,11 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
 
     mosquitto_topic_matches_sub(local_acl, topic, &result);
     free(local_acl);
-    _free_client_info(info);
     if(result){
       if(access & acl_root->access){
         /* And access is allowed. */
         mosquitto_log_printf(MOSQ_LOG_DEBUG, "Topic %s matched by %s. Access granted.", topic, acl_root->topic);
+        _free_client_info(info);
         return MOSQ_ERR_SUCCESS;
       }
     }
@@ -642,6 +643,7 @@ int mosquitto_auth_acl_check(void *user_data, const char *clientid, const char *
     acl_root = acl_root->next;
   }
   mosquitto_log_printf(MOSQ_LOG_DEBUG, "Access denied");
+  _free_client_info(info);
   return MOSQ_ERR_ACL_DENIED;
 }
 
