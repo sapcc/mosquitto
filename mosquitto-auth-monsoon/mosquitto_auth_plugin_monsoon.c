@@ -86,7 +86,7 @@ static auth_db *_malloc_auth_db() {
 int _parse_subject(const char *subject, client_info *info) {
   if (!subject) {
     mosquitto_log_printf(MOSQ_LOG_ERR, "No subject given");
-    return -1
+    return -1;
   }
   LDAPDN dn = NULL;
   int err = ldap_str2dn(subject, &dn , LDAP_DN_FORMAT_LDAPV3 | LDAP_DN_PEDANTIC);
