@@ -1,5 +1,5 @@
 diff --git a/mosquitto.conf b/mosquitto.conf
-index df1aa8b..82e22ec 100644
+index 99af968..199fbab 100644
 --- a/mosquitto.conf
 +++ b/mosquitto.conf
 @@ -212,8 +212,16 @@
@@ -20,7 +20,7 @@ index df1aa8b..82e22ec 100644
  # revocation list file to revoke access to particular client certificates. If
  # you have done this, use crlfile to point to the PEM encoded revocation file.
 diff --git a/src/conf.c b/src/conf.c
-index 6edd705..b9faea6 100644
+index a3e233d..6cffb45 100644
 --- a/src/conf.c
 +++ b/src/conf.c
 @@ -194,6 +194,7 @@ void mqtt3_config_init(struct mqtt3_config *config)
@@ -31,7 +31,7 @@ index 6edd705..b9faea6 100644
  #endif
  	config->listeners = NULL;
  	config->listener_count = 0;
-@@ -385,6 +386,7 @@ int mqtt3_config_parse_args(struct mqtt3_config *config, int argc, char *argv[])
+@@ -387,6 +388,7 @@ int mqtt3_config_parse_args(struct mqtt3_config *config, int argc, char *argv[])
  			|| config->default_listener.require_certificate
  			|| config->default_listener.crlfile
  			|| config->default_listener.use_identity_as_username
@@ -39,7 +39,7 @@ index 6edd705..b9faea6 100644
  #endif
  			|| config->default_listener.use_username_as_clientid
  			|| config->default_listener.host
-@@ -434,6 +436,7 @@ int mqtt3_config_parse_args(struct mqtt3_config *config, int argc, char *argv[])
+@@ -436,6 +438,7 @@ int mqtt3_config_parse_args(struct mqtt3_config *config, int argc, char *argv[])
  		config->listeners[config->listener_count-1].ssl_ctx = NULL;
  		config->listeners[config->listener_count-1].crlfile = config->default_listener.crlfile;
  		config->listeners[config->listener_count-1].use_identity_as_username = config->default_listener.use_identity_as_username;
@@ -47,7 +47,7 @@ index 6edd705..b9faea6 100644
  #endif
  	}
  
-@@ -1861,6 +1864,13 @@ int _config_read_file_core(struct mqtt3_config *config, bool reload, const char
+@@ -1709,6 +1712,13 @@ int _config_read_file_core(struct mqtt3_config *config, bool reload, const char
  #else
  					_mosquitto_log_printf(NULL, MOSQ_LOG_WARNING, "Warning: TLS support not available.");
  #endif
@@ -62,10 +62,10 @@ index 6edd705..b9faea6 100644
  					if(reload) continue; // Drop privileges user not valid for reloading.
  					if(_conf_parse_string(&token, "user", &config->user, saveptr)) return MOSQ_ERR_INVAL;
 diff --git a/src/mosquitto_broker.h b/src/mosquitto_broker.h
-index 19498a0..91d762e 100644
+index f33007c..ec1a0b7 100644
 --- a/src/mosquitto_broker.h
 +++ b/src/mosquitto_broker.h
-@@ -71,6 +71,7 @@ struct _mqtt3_listener {
+@@ -91,6 +91,7 @@ struct _mqtt3_listener {
  	SSL_CTX *ssl_ctx;
  	char *crlfile;
  	bool use_identity_as_username;
@@ -74,10 +74,10 @@ index 19498a0..91d762e 100644
  #endif
  #ifdef WITH_WEBSOCKETS
 diff --git a/src/read_handle_server.c b/src/read_handle_server.c
-index 973d9aa..b5eddc0 100644
+index 6be6a25..71d19ea 100644
 --- a/src/read_handle_server.c
 +++ b/src/read_handle_server.c
-@@ -312,7 +312,7 @@ int mqtt3_handle_connect(struct mosquitto_db *db, struct mosquitto *context)
+@@ -335,7 +335,7 @@ int mqtt3_handle_connect(struct mosquitto_db *db, struct mosquitto *context)
  	}
  
  #ifdef WITH_TLS
@@ -86,7 +86,7 @@ index 973d9aa..b5eddc0 100644
  		if(!context->ssl){
  			_mosquitto_send_connack(context, 0, CONNACK_REFUSED_BAD_USERNAME_PASSWORD);
  			rc = 1;
-@@ -340,15 +340,33 @@ int mqtt3_handle_connect(struct mosquitto_db *db, struct mosquitto *context)
+@@ -363,15 +363,33 @@ int mqtt3_handle_connect(struct mosquitto_db *db, struct mosquitto *context)
  				rc = 1;
  				goto handle_connect_error;
  			}
@@ -105,7 +105,7 @@ index 973d9aa..b5eddc0 100644
 +				}
 +				name_entry = X509_NAME_get_entry(name, i);
 +				if(name_entry){
-+					context->username = _mosquitto_strdup((char *)ASN1_STRING_data(name_entry->value));
++					context->username = _mosquitto_strdup((char *)ASN1_STRING_data(X509_NAME_ENTRY_get_data(name_entry)));
 +				}
 +			} else { // use_subject_as_username
 +				BIO *subject_bio = BIO_new(BIO_s_mem());
@@ -124,7 +124,7 @@ index 973d9aa..b5eddc0 100644
 +				context->username = subject;
  			}
 -			name_entry = X509_NAME_get_entry(name, i);
--			context->username = _mosquitto_strdup((char *)ASN1_STRING_data(name_entry->value));
+-			context->username = _mosquitto_strdup((char *)ASN1_STRING_data(X509_NAME_ENTRY_get_data(name_entry)));
  			if(!context->username){
  				rc = 1;
  				goto handle_connect_error;

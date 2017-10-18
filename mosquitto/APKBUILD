@@ -1,6 +1,6 @@
 # Maintainer: Natanael Copa <ncopa@alpinelinux.org>
 pkgname=mosquitto
-pkgver=1.4.9
+pkgver=1.4.14
 pkgrel=0
 pkgdesc="An Open Source MQTT v3.1 Broker"
 url="http://mosquitto.org/"
@@ -69,15 +69,15 @@ clients() {
 	mv "$pkgdir"/usr/bin/mosquitto_[ps]ub "$subpkgdir"/usr/bin/
 }
 
-md5sums="67943e2c5afebf7329628616eb2c41c5  mosquitto-1.4.9.tar.gz
+md5sums="6b0966e93f118bc71ad7b61600a6c2d3  mosquitto-1.4.14.tar.gz
 3a5c35f76efabcb7bd4fb6398caf9e5b  mosquitto.initd
-ef197246e697ba4675b91bd75ff167d4  0001-subject-as-username.patch
-4d5837af997eb41774f2dfc8609bd078  0002-log-rfc3339-timestamp.patch"
-sha256sums="1df3ae07de40b80a74cd37a7b026895c544cdd3b42c9e0719ae91623aa98c58b  mosquitto-1.4.9.tar.gz
+0ca82405714a0e9183940503b5cb0712  0001-subject-as-username.patch
+f293006b05591134a9036a01b3fce225  0002-log-rfc3339-timestamp.patch"
+sha256sums="156b1fa731d12baad4b8b22f7b6a8af50ba881fc711b81e9919ec103cf2942d1  mosquitto-1.4.14.tar.gz
 97c7324f0f5e9dce52b241366bcfc3fb02ef8d2e0d622bab898eb36f261056c9  mosquitto.initd
-305f59db9e3977efe828474a2b43a88d381372b01a991f9142250ab49a68fd71  0001-subject-as-username.patch
-32c1e754fa33a31bf5bf4286ff4e5c6f70e76f824e2fae5ba558451c1baa53af  0002-log-rfc3339-timestamp.patch"
-sha512sums="5994159d9a8da248a877f3032f36ca9a865d9b4efaafac329620864049992a77d414e02252cbbfef89ea2c37dc761b1885a89e19fc8e82b2a42d38f31e761d4d  mosquitto-1.4.9.tar.gz
+7eff7fa4a393bd15b468851938ffaf90f58e9feb67d1fbee72b82fbdf21abba8  0001-subject-as-username.patch
+34b13838a412dc0aa2e04d74c0bd678373e8440d56bfca6bb5c5ae9ebdf4d8a9  0002-log-rfc3339-timestamp.patch"
+sha512sums="dc75a971354f87deeb79f32435acfae9bc561a1a24a75ee4940a35176ff91758071930d2105d8dee2a090e07527dbfaa5692bece67e03cc87e8b4b8b46f846c2  mosquitto-1.4.14.tar.gz
 16f96d8f7f3a8b06e2b2e04d42d7e0d89a931b52277fc017e4802f7a3bc85aff4dd290b1a0c40382ea8f5568d0ceb7319c031d9be916f346d805231a002b0433  mosquitto.initd
-2f6839e49123a488942254b33f6259ac8b3dcc5816d76501ea7642c61623893bcac68c3034d8219b3209b82afc9f64a7a0a54bf2a52b25090407b540e0365f63  0001-subject-as-username.patch
-8a50c6c843724ab2b36e2030301cea5a0fe1b42f1bba46eb56170102295352de053de640a4f4859e30ec38d1d6ada64cc9be84edb0b129f3b515c48b11f1ebe4  0002-log-rfc3339-timestamp.patch"
+f56c7666cfc6191e7e529e01daa74b2fb3784743165224795a850160f1f4deb7555e4da5910cf72ddaec18a36955cd16d36b692d9576010f50b24744a85a25c0  0001-subject-as-username.patch
+1d8aeb32327bdecdb6560c97616f4207556057d7bdbc611923031f572bd941024e0abe07d13dd7f44247fb81f80cfe7cdaf5f0da3657d35f47bf63dd25ab09d2  0002-log-rfc3339-timestamp.patch"
