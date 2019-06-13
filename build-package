@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+deps=$(source ${1:-$PWD}/APKBUILD && echo $makedepends)
+apk add -U $deps
+if [ ! -f /home/build/.abuild/abuild.conf  ]; then
+  su-exec build abuild-keygen -a -i -n
+  cp /home/build/.abuild/*.pub /etc/apk/keys/
+fi
+cd ${1:-$PWD}
+su-exec build abuild -f -c
