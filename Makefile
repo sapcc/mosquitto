@@ -1,4 +1,4 @@
-REPOSITORY  := hub.***REMOVED***/monsoon/mosquitto
+REPOSITORY  := sapcc/mosquitto
 TAG         ?= latest
 IMAGE       := $(REPOSITORY):$(TAG)
 
@@ -12,4 +12,3 @@ image: packages
 
 packages:
 	false
-
