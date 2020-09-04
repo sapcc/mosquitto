@@ -13,6 +13,7 @@ RUN /src/build-package /src/mosquitto-auth-monsoon
 RUN cp /home/build/.abuild/*.pub /packages/src/
 
 FROM alpine:3.4
+LABEL source_repository="https://github.com/sapcc/mosquitto"
 COPY --from=0 /packages/src  /packages
 RUN echo "@local /packages" >> /etc/apk/repositories \
 	    && cp /packages/*.pub /etc/apk/keys \ 
