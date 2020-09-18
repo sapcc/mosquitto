@@ -12,3 +12,9 @@ image: packages
 
 packages:
 	false
+
+build:
+	docker build $(BUILD_ARGS) -t $(IMAGE) .
+
+push:
+	docker push $(IMAGE)
