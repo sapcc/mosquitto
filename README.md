@@ -1,5 +1,5 @@
 Mosquitto container for Monsoon
-===============================
+================================
 This repos contains the build environment for a dockerzied Mosquitto MQTT broker.
 
 The container is based on the alpine linux distribution and therefore the resulting docker images are very small (<10MB).
