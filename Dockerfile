@@ -1,4 +1,4 @@
-FROM alpine:3.4
+FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/alpine:3.6
 RUN mkdir -p /var/cache/distfiles && adduser -D build && addgroup build abuild && chgrp abuild /var/cache/distfiles && chmod g+w /var/cache/distfiles && echo "build ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 RUN apk add --no-cache alpine-sdk su-exec
 ENV REPODEST=/packages
@@ -16,7 +16,7 @@ FROM alpine:3.4
 LABEL source_repository="https://github.com/sapcc/mosquitto"
 COPY --from=0 /packages/src  /packages
 RUN echo "@local /packages" >> /etc/apk/repositories \
-	    && cp /packages/*.pub /etc/apk/keys \ 
+	    && cp /packages/*.pub /etc/apk/keys \
       && apk add --no-cache mosquitto@local mosquitto-clients@local mosquitto-auth-monsoon@local
 RUN mkdir -p /etc/mosquitto/conf.d
 ADD mosquitto.conf /etc/mosquitto/mosquitto.conf
