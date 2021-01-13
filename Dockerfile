@@ -1,4 +1,4 @@
-FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/alpine:3.6
+FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/alpine:3.4
 RUN mkdir -p /var/cache/distfiles && adduser -D build && addgroup build abuild && chgrp abuild /var/cache/distfiles && chmod g+w /var/cache/distfiles && echo "build ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 RUN apk add --no-cache alpine-sdk su-exec
 ENV REPODEST=/packages
