@@ -1,0 +1,10 @@
+FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/golang:1.17-alpine3.14
+RUN apk add --no-cache mosquitto-dev make bash gcc musl-dev
+WORKDIR /app
+ADD . /app
+RUN make plugin
+
+FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/eclipse-mosquitto:2.0.12
+COPY --from=0 /app/go-auth.so /mosquitto/go-auth.so
+
+

@@ -1,23 +1,32 @@
-FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/alpine:3.4
-RUN mkdir -p /var/cache/distfiles && adduser -D build && addgroup build abuild && chgrp abuild /var/cache/distfiles && chmod g+w /var/cache/distfiles && echo "build ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-RUN apk add --no-cache alpine-sdk su-exec
-ENV REPODEST=/packages
-RUN mkdir -p ${REPODEST}
-ADD . /src
-RUN echo $REPODEST/src >> /etc/apk/repositories
-RUN chown build ${REPODEST} \
-      && chown build /src/mosquitto \
-      && chown build /src/mosquitto-auth-monsoon
-RUN /src/build-package /src/mosquitto
-RUN /src/build-package /src/mosquitto-auth-monsoon
-RUN cp /home/build/.abuild/*.pub /packages/src/
+# Define Mosquitto version
+ARG MOSQUITTO_VERSION=2.0.12
 
-FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/alpine:3.4
-LABEL source_repository="https://github.com/sapcc/mosquitto"
-COPY --from=0 /packages/src  /packages
-RUN echo "@local /packages" >> /etc/apk/repositories \
-	    && cp /packages/*.pub /etc/apk/keys \
-      && apk add --no-cache mosquitto@local mosquitto-clients@local mosquitto-auth-monsoon@local
-RUN mkdir -p /etc/mosquitto/conf.d
-ADD mosquitto.conf /etc/mosquitto/mosquitto.conf
-CMD ["mosquitto", "-c", "/etc/mosquitto/mosquitto.conf"]
+# Use debian:stable-slim as a builder for Mosquitto and dependencies.
+FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/debian:stable-slim as mosquitto_builder
+ARG MOSQUITTO_VERSION
+
+# Get mosquitto build dependencies.
+RUN apt update && apt install -y wget build-essential cmake libssl-dev  libcjson-dev
+
+WORKDIR /app
+RUN mkdir -p mosquitto/auth mosquitto/conf.d
+RUN wget http://mosquitto.org/files/source/mosquitto-${MOSQUITTO_VERSION}.tar.gz 
+RUN tar xzvf mosquitto-${MOSQUITTO_VERSION}.tar.gz
+RUN cd mosquitto-${MOSQUITTO_VERSION} && make CFLAGS="-Wall -O2" && make install
+
+FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/golang:1.17 AS plugin_builder
+WORKDIR /app
+COPY --from=mosquitto_builder /usr/local/include/ /usr/local/include/
+ADD . /app
+RUN --mount=type=cache,target=/go/pkg/mod \
+	  --mount=type=cache,target=/root/.cache/go-build make plugin
+
+FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/debian:stable-slim
+RUN addgroup --system --gid 1883 mosquitto \
+	   && adduser --system --uid 1883 --disabled-password --no-create-home --home /var/empty --shell /sbin/nologin --ingroup mosquitto --gecos mosquitto mosquitto
+COPY --from=mosquitto_builder /app/mosquitto/ /mosquitto/
+COPY --from=plugin_builder /app/go-auth.so /mosquitto/go-auth.so
+COPY --from=mosquitto_builder /usr/local/sbin/mosquitto /usr/sbin/mosquitto
+CMD [ "/usr/sbin/mosquitto" ,"-c", "/mosquitto/config/mosquitto.conf" ]
+
+
