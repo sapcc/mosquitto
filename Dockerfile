@@ -19,7 +19,7 @@ WORKDIR /app
 COPY --from=mosquitto_builder /usr/local/include/ /usr/local/include/
 ADD . /app
 RUN --mount=type=cache,target=/go/pkg/mod \
-	  --mount=type=cache,target=/root/.cache/go-build make plugin
+	  --mount=type=cache,target=/root/.cache/go-build make plugin test
 
 FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/debian:stable-slim
 RUN addgroup --system --gid 1883 mosquitto \

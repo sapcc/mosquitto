@@ -15,6 +15,8 @@ build:
 push:
 	docker push $(IMAGE)
 
+test:
+	go test -v ./auth
 plugin:
 	@echo "Bulding for $(UNAME_S)"
 	env CGO_CFLAGS="$(CFLAGS)" go build -v -buildmode=c-archive go-auth.go
