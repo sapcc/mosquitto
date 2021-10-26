@@ -22,10 +22,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 	  --mount=type=cache,target=/root/.cache/go-build make plugin test
 
 FROM keppel.eu-de-1.cloud.sap/ccloud-dockerhub-mirror/library/debian:stable-slim
+LABEL source_repository="https://github.com/sapcc/mosquitto"
 RUN addgroup --system --gid 1883 mosquitto \
 	   && adduser --system --uid 1883 --disabled-password --no-create-home --home /var/empty --shell /sbin/nologin --ingroup mosquitto --gecos mosquitto mosquitto
 COPY --from=mosquitto_builder /app/mosquitto/ /mosquitto/
-COPY --from=plugin_builder /app/go-auth.so /mosquitto/go-auth.so
+COPY --from=plugin_builder /app/go-auth.so /usr/local/lib/mosquitto-auth.so
 COPY --from=mosquitto_builder /usr/local/sbin/mosquitto /usr/sbin/mosquitto
 CMD [ "/usr/sbin/mosquitto" ,"-c", "/mosquitto/config/mosquitto.conf" ]
 

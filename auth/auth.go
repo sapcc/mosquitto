@@ -66,6 +66,8 @@ func CheckACL(username, topic string, access ACLAccess) error {
 		if topic == "identity/"+dn.CommonName {
 			return nil
 		}
+	case ACLAccessUnsubscribe:
+		return nil //allways allow to unsubscribe
 	}
 	return errors.New("Not allowed")
 

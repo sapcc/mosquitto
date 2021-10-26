@@ -39,6 +39,7 @@ func AuthPluginInit(keys []string, values []string, authOptsNum int, version str
 //export AuthAclCheck
 func AuthAclCheck(clientid, username, topic string, acc int) (result uint8) {
 	access := auth.ACLAccess(acc)
+
 	err := auth.CheckACL(username, topic, access)
 	if err != nil {
 		log(LogNotice, "ACL reject %s. username: %s, topic: %s, err: %v", access, username, topic, err)
