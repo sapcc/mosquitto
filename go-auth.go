@@ -1,9 +1,18 @@
 package main
 
+// #include <stdlib.h>
+// #include <mosquitto_broker.h>
+// #cgo LDFLAGS: -shared
+// #cgo CFLAGS: -fPIC
+//
+// static void mosquitto_log(int lvl, char* s) {
+//   mosquitto_log_printf(lvl, s);
+// }
 import "C"
 
 import (
-	"log"
+	"fmt"
+	"unsafe"
 
 	"github.com/sapcc/mosquitto/auth"
 )
@@ -15,23 +24,16 @@ const (
 	AuthError    = 2
 )
 
-var debug = false
-
 //export AuthPluginInit
 func AuthPluginInit(keys []string, values []string, authOptsNum int, version string) {
+	log(LogInfo, "auth plugin init")
 	for i := 0; i < authOptsNum; i++ {
 		key, value := keys[i], values[i]
 		switch key {
 		case "debug":
-			debug = value == "true"
+			_ = value
 		}
 	}
-}
-
-//export AuthUnpwdCheck
-func AuthUnpwdCheck(username, password, clientid string) uint8 {
-	Debugf("AuthUnpwdCheck(username: %s, password: ***, clientid: %s)", username, clientid)
-	return AuthGranted
 }
 
 //export AuthAclCheck
@@ -39,29 +41,29 @@ func AuthAclCheck(clientid, username, topic string, acc int) (result uint8) {
 	access := auth.ACLAccess(acc)
 	err := auth.CheckACL(username, topic, access)
 	if err != nil {
-		log.Printf("ACL reject %s. username: %s, topic: %s, err: %v", access, username, topic, err)
+		log(LogNotice, "ACL reject %s. username: %s, topic: %s, err: %v", access, username, topic, err)
 		return AuthRejected
 	}
 	//access is allowed
-	Debugf("ACL allow %s. client: %s, username: %s, topic: %s", access, username, topic)
+	log(LogDebug, "ACL allow %s. client: %s, username: %s, topic: %s", access, username, topic)
 	return AuthGranted
 
 }
 
-//export AuthPskKeyGet
-func AuthPskKeyGet() bool {
-	return true
-}
+type LogLevel int
 
-//export AuthPluginCleanup
-func AuthPluginCleanup() {
-	Debugf("AuthPluginCleanup")
-}
+const (
+	LogInfo    LogLevel = 0x01
+	LogNotice  LogLevel = 0x02
+	LogWarning LogLevel = 0x04
+	LogError   LogLevel = 0x08
+	LogDebug   LogLevel = 0x10
+)
 
-func Debugf(msg string, args ...interface{}) {
-	if debug {
-		log.Printf(msg, args...)
-	}
+func log(level LogLevel, msg string, args ...interface{}) {
+	cmsg := C.CString(fmt.Sprintf(msg, args...))
+	C.mosquitto_log(C.int(level), cmsg)
+	C.free(unsafe.Pointer(cmsg))
 }
 
 func main() {}

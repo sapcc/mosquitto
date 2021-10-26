@@ -2,9 +2,6 @@ REPOSITORY  := sapcc/mosquitto
 TAG         ?= latest
 IMAGE       := $(REPOSITORY):$(TAG)
 
-CFLAGS := -fPIC
-LDFLAGS := -shared
-
 SHELL := bash
 
 BROKER_CN := localhost
@@ -19,8 +16,8 @@ test:
 	go test -v ./auth
 plugin:
 	@echo "Bulding for $(UNAME_S)"
-	env CGO_CFLAGS="$(CFLAGS)" go build -v -buildmode=c-archive go-auth.go
-	env CGO_LDFLAGS="$(LDFLAGS)" go build -v -buildmode=c-shared -o go-auth.so
+	go build -v -buildmode=c-archive go-auth.go
+	go build -v -buildmode=c-shared -o go-auth.so
 
 run: config/ca.crt config/server.crt
 	docker run --rm -it -v $(CURDIR)/config:/mosquitto/config -p 1883:1883 -p 8883:8883 $(IMAGE)
