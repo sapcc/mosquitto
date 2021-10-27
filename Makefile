@@ -1,6 +1,6 @@
 REPOSITORY  := sapcc/mosquitto
-TAG         ?= latest
-IMAGE       := $(REPOSITORY):$(TAG)
+VERSION     ?= 2.0.12-r1
+IMAGE       := $(REPOSITORY):$(VERSION)
 
 SHELL := bash
 
