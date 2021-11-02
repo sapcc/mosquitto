@@ -1,4 +1,2 @@
-build.key*
-pkgs/
-*.o
-*.so
+config/*.crt
+config/*.key
