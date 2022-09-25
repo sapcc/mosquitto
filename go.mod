@@ -1,6 +1,6 @@
 module github.com/sapcc/mosquitto
 
-go 1.17
+go 1.19
 
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20200615164410-66371956d46c // indirect
